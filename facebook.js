@@ -23,7 +23,6 @@
     user: user,
     currentUser: currentUser,
     currentStatus: currentStatus,
-    userFromStatus: userFromStatus,
   };
 
   function promise(options) {
@@ -68,13 +67,13 @@
     return (initPromise = promise(OPTIONS, function(deferred) {
 
       window.fbAsyncInit = function() {
+        console.log('init');
         FB.init({
           appId: window.FACEBOOK_APP_ID,
           channelUrl: '//' + window.location.hostname + '/channel.html',
-          status: false,
-          cookie: false,
+          status: true,
+          cookie: true,
           oauth: true,
-          xfbml: false
         });
 
         deferred.resolve();
@@ -87,13 +86,14 @@
         js = d.createElement('script');
         js.id = id;
         js.async = true;
-        js.src = "//connect.facebook.net/en_US/all.js";
+        js.src = "//connect.facebook.net/en_US/all/debug.js";
+        js.type = "text/javascript";
         d.getElementsByTagName('head')[0].appendChild(js);
       }(document));
     }));
   }
 
-  function user (id) {
+  function user(id) {
     return promise(OPTIONS, function(deferred) {
       FB.api('/' + id, function(data) {
         if (data.error){
@@ -105,8 +105,8 @@
     });
   }
 
-  function userFromStatus (status, userDetails) {
-    return Facebook.user(userDetails.userID);
+  function userFromStatus (statusResponse) {
+    return Facebook.user(statusResponse.userID);
   }
 
   function login (){
@@ -114,18 +114,13 @@
       function attemptFacebookLogin() {
         FB.login(function(response) {
           if (response.status === 'connected') {
-            otherData = {
-              access_token: response.authResponse.accessToken,
-              expires_in: response.authResponse.expiresIn
-            }
+            window.authResponse = response.authResponse;
 
             Facebook.
-              user(response.authResponse.userID, otherData).
+              user(response.authResponse.userID).
               then(deferred.resolve, deferred.reject)
 
           } else {
-            // TODO: it would be nice if facebook gave us
-            // more context...
             deferred.reject(UNABLE_TO_CONNECT)
           }
         });
@@ -147,19 +142,18 @@
   }
 
   function currentUser() {
-    return Facebook.currentStatus().then(Facebook.userFromStatus);
+    return Facebook.currentStatus().then(userFromStatus);
   }
 
   function currentStatus() {
-
     return promise(OPTIONS, function(deferred) {
       function getStatus() {
         FB.getLoginStatus(function(response) {
-
           if (response.status === 'connected') {
-            deferred.resolve(response.status, response.authResponse);
+            window.authResponse = response.authResponse;
+            deferred.resolve(response.authResponse);
           } else {
-            deferred.reject(response.status, response.authResponse);
+            deferred.reject(response.authResponse);
           }
         });
       }
